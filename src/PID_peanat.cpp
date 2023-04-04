@@ -171,7 +171,7 @@ double PID::compute(double user_setpoint, double user_input) {
             }
 
             // Don't change output if within deadband
-            if (abs(output - prev_output) < deadband) {
+            if (fabs(output - prev_output) < deadband) {
                 output = prev_output;
             }
 
