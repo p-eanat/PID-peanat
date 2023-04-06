@@ -1,60 +1,104 @@
-#include <Arduino.h>
-#include <unity.h>
+#include "unity.h"
+#include "Arduino.h"
+#include "PID_peanat.h"
 
-void setUp(void)
-{
-  // set stuff up here
+
+void setUp(void) {}
+void tearDown(void) {}
+
+
+void test_setup() {
+  PID pid(1.0, 2.0, 3.0);
+  TEST_ASSERT_EQUAL(1.0, pid.getkp());
+  TEST_ASSERT_EQUAL(2.0, pid.getki());
+  TEST_ASSERT_EQUAL(3.0, pid.getkd());
+
+  pid.updateCoeffs(1.0, 0.0, 0.0);
+  TEST_ASSERT_EQUAL(1.0, pid.getkp());
+  TEST_ASSERT_EQUAL(0.0, pid.getki());
+  TEST_ASSERT_EQUAL(0.0, pid.getkd());
 }
 
-void tearDown(void)
-{
-  // clean stuff up here
+void test_init_out() {
+  PID pid(1.0, 2.0, 3.0);
+  pid.setInitOutput(10.0);
+  double init_val = pid.compute(1.0, 2.0);
+  TEST_ASSERT_EQUAL(10.0, init_val);
 }
 
-void test_led_builtin_pin_number(void)
-{
-  TEST_ASSERT_EQUAL(13, LED_BUILTIN);
+void test_rev() {
+  PID pid(1.0, 2.0, 3.0);
+  pid.setReverse(true);
+  pid.setReverse(true);
+  TEST_ASSERT_EQUAL(-1.0, pid.getkp());
+  TEST_ASSERT_EQUAL(-2.0, pid.getki());
+  TEST_ASSERT_EQUAL(-3.0, pid.getkd());
 }
 
-void test_led_state_high(void)
-{
-  digitalWrite(LED_BUILTIN, HIGH);
-  TEST_ASSERT_EQUAL(HIGH, digitalRead(LED_BUILTIN));
+void test_p() {
+  PID pid(1.0, 0.0, 0.0);
+  pid.setOutputBounds(0.0, 10.0);
+  pid.setDeadband(5.0);
+  
+  // Initial output
+  double val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_EQUAL(0.0, val);
+
+  // Output should not change because it's within deadband
+  delay(100);
+  val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_EQUAL(0.0, val);
+
+  // Output should not change because has not met sample time requirement
+  pid.setSampleTime(200);
+  delay(100);
+  val = pid.compute(15.0, 2.0);
+  TEST_ASSERT_EQUAL(0.0, val);
+
+  // This time, should be max
+  delay(100);
+  val = pid.compute(15.0, 2.0);
+  TEST_ASSERT_EQUAL(10.0, val);
 }
 
-void test_led_state_low(void)
-{
-  digitalWrite(LED_BUILTIN, LOW);
-  TEST_ASSERT_EQUAL(LOW, digitalRead(LED_BUILTIN));
+void test_i() {
+  PID pid(0.0, 10.0, 0.0);
+  pid.setOutputBounds(0.0, 10.0);
+  pid.setInitOutput(0.001);
+  pid.compute(2.0, 1.0);
+
+  delay(100);
+  float val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.01, 1.0, val);
+  delay(900);
+  float val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.01, 10.0, val);
+
+  // Output should not have changed
+  delay(100);
+  float val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.01, 10.0, val);
+
+  delay(100);
+  float val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.01, 10.0, val);
+
+
 }
 
-void setup()
-{
-  // NOTE!!! Wait for >2 secs
-  // if board doesn't support software reset via Serial.DTR/RTS
+
+void setup() {
   delay(2000);
 
-  pinMode(LED_BUILTIN, OUTPUT);
+  UNITY_BEGIN();
 
-  UNITY_BEGIN(); // IMPORTANT LINE!
-  RUN_TEST(test_led_builtin_pin_number);
+  RUN_TEST(test_setup);
+  RUN_TEST(test_init_out);
+  RUN_TEST(test_rev);
+  RUN_TEST(test_p);
+  RUN_TEST(test_i);
+
+  UNITY_END();
 }
 
-uint8_t i = 0;
-uint8_t max_blinks = 5;
-
-void loop()
-{
-  if (i < max_blinks)
-  {
-    RUN_TEST(test_led_state_high);
-    delay(500);
-    RUN_TEST(test_led_state_low);
-    delay(500);
-    i++;
-  }
-  else if (i == max_blinks)
-  {
-    UNITY_END(); // stop unit testing
-  }
-}
+void loop() {}

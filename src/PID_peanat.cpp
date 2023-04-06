@@ -61,12 +61,14 @@ void PID::updateCoeffs(double user_kp, double user_ki, double user_kd) {
 
 void PID::setInitOutput(double user_init_output) {
     /*
-     * Set initial output
+     * Set initial output; must be within or on output bounds.
      *
      * @param user_init_output: desired initial output, for when we want the output to start at a specific value
      * 
      * @returns none
      */
+
+    init_output = user_init_output;
 }
 
 void PID::setReverse(bool user_reverse) {
@@ -80,6 +82,9 @@ void PID::setReverse(bool user_reverse) {
 
    if (reverse != user_reverse) {
         reverse = user_reverse;
+        kp *= -1.0;
+        ki *= -1.0;
+        kd *= -1.0;
    }
 }
 
@@ -136,8 +141,11 @@ double PID::compute(double user_setpoint, double user_input) {
     
     // If first run, initialize variables
     if (first_run == true) {
+        setpoint = user_setpoint;
+        input = user_input;
+
         prev_time = millis();
-        prev_error = user_setpoint - user_input;
+        prev_error = setpoint - input;
         prev_output = init_output;
 
         output = init_output;
@@ -157,7 +165,7 @@ double PID::compute(double user_setpoint, double user_input) {
             output = init_output + kp * error;
             output += kd * (error - prev_error) / ((double)time_interval * SECS_IN_MS);
 
-            // To prevent integral windup, only compute and add integral term if output is not at bounds
+            // To prevent integral windup, only compute and add integral term if output is within or on bounds
             if (output < max_output  &&  output > min_output) {
                 cumulative_error += error * ((double)time_interval * SECS_IN_MS);
                 output += ki * cumulative_error;
