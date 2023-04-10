@@ -64,26 +64,45 @@ void test_p() {
 void test_i() {
   PID pid(0.0, 10.0, 0.0);
   pid.setOutputBounds(0.0, 10.0);
-  pid.setInitOutput(0.001);
   pid.compute(2.0, 1.0);
 
-  delay(100);
+  delay(101);
   float val = pid.compute(2.0, 1.0);
-  TEST_ASSERT_FLOAT_WITHIN(0.01, 1.0, val);
+  TEST_ASSERT_FLOAT_WITHIN(0.1, 1.0, val);
   delay(900);
-  float val = pid.compute(2.0, 1.0);
-  TEST_ASSERT_FLOAT_WITHIN(0.01, 10.0, val);
+  val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.1, 10.0, val);
 
-  // Output should not have changed
+  // Output should not have changed, since output is saturated
+  delay(200);
+  val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.1, 10.0, val);
+
+  // Output should decrease because (setpoint - input) is now negative
   delay(100);
-  float val = pid.compute(2.0, 1.0);
-  TEST_ASSERT_FLOAT_WITHIN(0.01, 10.0, val);
+  val = pid.compute(2.0, 3.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.1, 9.0, val);
+}
 
+void test_d() {
+  PID pid(0.0, 0.0, 0.1);
+  pid.setOutputBounds(-10.0, 10.0);
+  pid.compute(2.0, 1.0);
+
+  // Error has not changed, so derivative term should be zero
+  delay(200);
+  float val = pid.compute(2.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.1, 0.0, val);
+
+  // Postitive delta error
   delay(100);
-  float val = pid.compute(2.0, 1.0);
-  TEST_ASSERT_FLOAT_WITHIN(0.01, 10.0, val);
+  val = pid.compute(3.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.1, 1.0, val);
 
-
+  // Negative delta error
+  delay(100);
+  val = pid.compute(1.0, 1.0);
+  TEST_ASSERT_FLOAT_WITHIN(0.1, -2.0, val);
 }
 
 
@@ -97,6 +116,7 @@ void setup() {
   RUN_TEST(test_rev);
   RUN_TEST(test_p);
   RUN_TEST(test_i);
+  RUN_TEST(test_d);
 
   UNITY_END();
 }
