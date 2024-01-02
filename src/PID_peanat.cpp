@@ -1,6 +1,6 @@
 /* 
- * Peanat's PID library made for Jeremy the robot, but should work well for all other robot needs too!
- * Extra features: custom initial output, reverse mode, integral windup prevention, deadband limits
+ * PID library made for robots!
+ * Extra: custom initial output, deadband limits
  * Date created: Aug. 16, 2022
  */
 
@@ -160,19 +160,13 @@ double PID::compute(double user_setpoint, double user_input) {
             output = init_output + kp * error;
             // Integral
             cumulative_error += ki * error * ((double)time_interval * SECS_IN_MS);
+            cumulative_error = min(max(cumulative_error, min_output), max_output); // Limit cumulative error to prevent windup
             output += cumulative_error;
             // Derivative
-            output += kd * (error - prev_error) / ((double)time_interval * SECS_IN_MS);
-            
+            output += kd * (prev_error - error) / ((double)time_interval * SECS_IN_MS);
 
-            if (output > max_output) {
-                cumulative_error += max_output - output;    // To prevent integral windup
-                output = max_output;
-            }
-            else if (output < min_output) {
-                cumulative_error += min_output - output;    // To prevent integral windup
-                output = min_output;
-            }
+            // Limit output
+            output = min(max(output, min_output), max_output);
 
             // Don't change output if within deadband
             if (fabs(output - prev_output) < deadband) {
